@@ -219,37 +219,46 @@ try {
     // ====== CRIAR PERMISSÕES ======
     mc_log('===== CRIANDO PERMISSÕES =====');
 
-    $role_id = 1;
-    mc_log("Verificando permissões para role_id: $role_id");
+    // Verificar se a tabela de permissões existe
+    mc_log('Verificando se tabela de permissões existe');
+    if ($CI->db->table_exists($prefix . 'permissions')) {
+        mc_log('Tabela de permissões existe');
 
-    $existing_perms = $CI->db->where('feature', 'mc_cotas_g3')
-                             ->get($prefix . 'permissions')
-                             ->num_rows();
+        $role_id = 1;
+        mc_log("Verificando permissões para role_id: $role_id");
 
-    mc_log("Permissões existentes: $existing_perms");
+        $existing_perms = $CI->db->where('feature', 'mc_cotas_g3')
+                                 ->get($prefix . 'permissions')
+                                 ->num_rows();
 
-    if ($existing_perms == 0) {
-        mc_log('Criando permissões...');
+        mc_log("Permissões existentes: $existing_perms");
 
-        $permissions = [
-            ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'view'],
-            ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'create'],
-            ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'edit'],
-            ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'delete'],
-        ];
+        if ($existing_perms == 0) {
+            mc_log('Criando permissões...');
 
-        foreach ($permissions as $perm) {
-            mc_log("Inserindo permissão: {$perm['capability']}");
-            $CI->db->insert($prefix . 'permissions', $perm);
+            $permissions = [
+                ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'view'],
+                ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'create'],
+                ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'edit'],
+                ['permissionid' => $role_id, 'feature' => 'mc_cotas_g3', 'capability' => 'delete'],
+            ];
 
-            if ($CI->db->affected_rows() > 0) {
-                mc_log("Permissão {$perm['capability']} criada com sucesso");
-            } else {
-                mc_log("AVISO: Erro ao criar permissão {$perm['capability']}");
+            foreach ($permissions as $perm) {
+                mc_log("Inserindo permissão: {$perm['capability']}");
+                $CI->db->insert($prefix . 'permissions', $perm);
+
+                if ($CI->db->affected_rows() > 0) {
+                    mc_log("Permissão {$perm['capability']} criada com sucesso");
+                } else {
+                    mc_log("AVISO: Erro ao criar permissão {$perm['capability']}");
+                }
             }
+        } else {
+            mc_log('Permissões já existem');
         }
     } else {
-        mc_log('Permissões já existem');
+        mc_log('AVISO: Tabela de permissões não existe - pulando criação de permissões');
+        mc_log('NOTA: O módulo funcionará normalmente sem permissões');
     }
 
     // ====== LOG DE ATIVIDADE ======

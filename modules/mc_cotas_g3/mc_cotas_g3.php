@@ -61,7 +61,17 @@ function mc_cotas_g3_init_menu_items()
 {
     $CI = &get_instance();
 
-    if (has_permission('mc_cotas_g3', '', 'view')) {
+    // Verificar permissão (se o sistema de permissões existir) ou se é admin
+    $can_view = false;
+
+    if ($CI->db->table_exists(db_prefix() . 'permissions') && function_exists('has_permission')) {
+        $can_view = has_permission('mc_cotas_g3', '', 'view');
+    } else {
+        // Se não há sistema de permissões, permitir para todos os admins
+        $can_view = is_admin();
+    }
+
+    if ($can_view) {
         $CI->app_menu->add_sidebar_menu_item('mc-cotas-g3', [
             'name'     => _l('mc_cotas_g3_menu'),
             'collapse' => true,
@@ -94,6 +104,17 @@ hooks()->add_action('admin_init', 'mc_cotas_g3_permissions');
 
 function mc_cotas_g3_permissions()
 {
+    // Verificar se o sistema suporta permissões
+    if (!function_exists('register_staff_capabilities')) {
+        return;
+    }
+
+    // Verificar se a tabela de permissões existe
+    $CI = &get_instance();
+    if (!$CI->db->table_exists(db_prefix() . 'permissions')) {
+        return;
+    }
+
     $capabilities = [];
 
     $capabilities['capabilities'] = [

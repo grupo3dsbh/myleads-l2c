@@ -4,17 +4,41 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 class Mc_cotas_g3 extends AdminController
 {
+    private $has_permissions_system = false;
+
     public function __construct()
     {
         parent::__construct();
 
-        // Verificar permissão
-        if (!has_permission('mc_cotas_g3', '', 'view')) {
-            access_denied('mc_cotas_g3');
+        // Verificar se o sistema de permissões existe
+        $this->has_permissions_system = $this->db->table_exists(db_prefix() . 'permissions');
+
+        // Verificar permissão (se o sistema de permissões existir)
+        if ($this->has_permissions_system && function_exists('has_permission')) {
+            if (!$this->check_permission('view')) {
+                access_denied('mc_cotas_g3');
+            }
         }
 
         // Carregar model
         $this->load->model('mc_cotas_g3/mc_cotas_g3_model');
+    }
+
+    /**
+     * Verificar permissão (compatível com sistemas sem tabela de permissões)
+     */
+    private function check_permission($capability = 'view')
+    {
+        if (!$this->has_permissions_system) {
+            // Se não há sistema de permissões, permitir acesso (apenas para admins)
+            return is_admin();
+        }
+
+        if (function_exists('has_permission')) {
+            return has_permission('mc_cotas_g3', '', $capability);
+        }
+
+        return is_admin();
     }
 
     /**
@@ -31,7 +55,7 @@ class Mc_cotas_g3 extends AdminController
     public function sync()
     {
         if ($this->input->post()) {
-            if (!has_permission('mc_cotas_g3', '', 'create')) {
+            if (!$this->check_permission('create')) {
                 access_denied('mc_cotas_g3');
             }
 
@@ -51,7 +75,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function sync_now()
     {
-        if (!has_permission('mc_cotas_g3', '', 'create')) {
+        if (!$this->check_permission('create')) {
             ajax_access_denied();
         }
 
@@ -89,7 +113,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function test_connection()
     {
-        if (!has_permission('mc_cotas_g3', '', 'view')) {
+        if (!$this->check_permission('view')) {
             ajax_access_denied();
         }
 
@@ -103,7 +127,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function settings()
     {
-        if (!has_permission('mc_cotas_g3', '', 'edit')) {
+        if (!$this->check_permission('edit')) {
             access_denied('mc_cotas_g3');
         }
 
@@ -138,7 +162,7 @@ class Mc_cotas_g3 extends AdminController
      */
     private function save_settings()
     {
-        if (!has_permission('mc_cotas_g3', '', 'edit')) {
+        if (!$this->check_permission('edit')) {
             ajax_access_denied();
         }
 
@@ -188,7 +212,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function get_sync_history()
     {
-        if (!has_permission('mc_cotas_g3', '', 'view')) {
+        if (!$this->check_permission('view')) {
             ajax_access_denied();
         }
 
@@ -203,7 +227,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function view_sync_log($sync_id)
     {
-        if (!has_permission('mc_cotas_g3', '', 'view')) {
+        if (!$this->check_permission('view')) {
             access_denied('mc_cotas_g3');
         }
 
@@ -233,7 +257,7 @@ class Mc_cotas_g3 extends AdminController
      */
     public function clear_history()
     {
-        if (!has_permission('mc_cotas_g3', '', 'delete')) {
+        if (!$this->check_permission('delete')) {
             ajax_access_denied();
         }
 
