@@ -45,7 +45,8 @@ class Mc_cotas_g3_model extends App_Model
     }
 
     /**
-     * Sincronizar membros do Multiclubes com leads do MyLeads CRM
+     * Sincronizar membros do Multiclubes com leads EXISTENTES do MyLeads CRM
+     * Compara telefones e atualiza leads que correspondem
      *
      * @param array $options
      * @return array
