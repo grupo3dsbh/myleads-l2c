@@ -224,10 +224,60 @@ class Sqlsrv_connector
             $query .= " WHERE " . implode(' AND ', $conditions);
         }
 
-        // Ordenar por data de atualização
-        $query .= " ORDER BY [LastUpdateDate] DESC";
+        // Ordenar por MemberId para paginação consistente
+        $query .= " ORDER BY [MemberId] ASC";
+
+        // Paginação (OFFSET/FETCH - SQL Server 2012+)
+        if (isset($filters['limit']) && $filters['limit'] > 0) {
+            $offset = isset($filters['offset']) ? (int)$filters['offset'] : 0;
+            $limit = (int)$filters['limit'];
+
+            $query .= " OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
+        }
 
         return $this->query($query);
+    }
+
+    /**
+     * Contar total de membros (para paginação)
+     *
+     * @param array $filters
+     * @return int|false
+     */
+    public function count_members($filters = [])
+    {
+        $query = "SELECT COUNT(*) as total
+        FROM [MultiClubes].[Analytics].[MembersView]";
+
+        $conditions = [];
+
+        // Filtro: apenas titulares
+        if (!empty($filters['only_titular'])) {
+            $conditions[] = "[Titular] = 'Titular'";
+        }
+
+        // Filtro: apenas ativos
+        if (!empty($filters['only_active'])) {
+            $conditions[] = "[MemberStatus] = 'Ativo'";
+        }
+
+        // Filtro: data específica
+        if (!empty($filters['from_date'])) {
+            $conditions[] = "[LastUpdateDate] >= '" . $filters['from_date'] . "'";
+        }
+
+        // Adicionar condições à query
+        if (!empty($conditions)) {
+            $query .= " WHERE " . implode(' AND ', $conditions);
+        }
+
+        $result = $this->query($query);
+
+        if ($result && isset($result[0]['total'])) {
+            return (int)$result[0]['total'];
+        }
+
+        return false;
     }
 
     /**

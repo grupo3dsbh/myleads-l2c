@@ -45,7 +45,7 @@ class Mc_cotas_g3_model extends App_Model
     }
 
     /**
-     * Sincronizar membros do Multiclubes com leads do Perfex CRM
+     * Sincronizar membros do Multiclubes com leads do MyLeads CRM
      *
      * @param array $options
      * @return array
@@ -55,14 +55,15 @@ class Mc_cotas_g3_model extends App_Model
         $start_time = microtime(true);
 
         $stats = [
-            'success'       => false,
-            'total_members' => 0,
-            'new_leads'     => 0,
-            'updated_leads' => 0,
-            'skipped'       => 0,
-            'errors'        => 0,
-            'error_log'     => [],
+            'success'        => false,
+            'total_members'  => 0,
+            'new_leads'      => 0,
+            'updated_leads'  => 0,
+            'skipped'        => 0,
+            'errors'         => 0,
+            'error_log'      => [],
             'execution_time' => 0,
+            'batches'        => 0,
         ];
 
         try {
@@ -85,39 +86,76 @@ class Mc_cotas_g3_model extends App_Model
                 $filters['only_active'] = true;
             }
 
-            // Buscar membros
-            $members = $connector->get_members($filters);
+            // Contar total de membros
+            $total_members = $connector->count_members($filters);
 
-            if ($members === false) {
-                throw new Exception('Erro ao buscar membros: ' . $connector->get_last_error());
+            if ($total_members === false) {
+                throw new Exception('Erro ao contar membros: ' . $connector->get_last_error());
             }
 
-            $stats['total_members'] = count($members);
+            $stats['total_members'] = $total_members;
 
-            // Processar cada membro
-            foreach ($members as $member) {
-                try {
-                    $result = $this->process_member($member);
+            // Tamanho do lote (batch)
+            $batch_size = (int)get_option('mc_cotas_g3_sync_batch_size') ?: 100;
 
-                    if ($result['action'] == 'created') {
-                        $stats['new_leads']++;
-                    } elseif ($result['action'] == 'updated') {
-                        $stats['updated_leads']++;
-                    } elseif ($result['action'] == 'skipped') {
-                        $stats['skipped']++;
-                    }
-                } catch (Exception $e) {
-                    $stats['errors']++;
-                    $stats['error_log'][] = [
-                        'member_id'   => $member['MemberId'] ?? 'N/A',
-                        'member_name' => $member['MemberName'] ?? 'N/A',
-                        'error'       => $e->getMessage(),
-                    ];
+            // Calcular número de lotes
+            $total_batches = ceil($total_members / $batch_size);
 
-                    if (get_option('mc_cotas_g3_enable_detailed_log') == '1') {
-                        log_activity('MC Cotas G3 - Erro ao processar membro ' . ($member['MemberName'] ?? 'N/A') . ': ' . $e->getMessage());
+            // Processar em lotes
+            for ($batch = 0; $batch < $total_batches; $batch++) {
+                $offset = $batch * $batch_size;
+
+                // Buscar lote de membros
+                $filters['limit'] = $batch_size;
+                $filters['offset'] = $offset;
+
+                $members = $connector->get_members($filters);
+
+                if ($members === false) {
+                    throw new Exception('Erro ao buscar membros (lote ' . ($batch + 1) . '): ' . $connector->get_last_error());
+                }
+
+                // Log do lote
+                if (get_option('mc_cotas_g3_enable_detailed_log') == '1') {
+                    log_activity(sprintf(
+                        'MC Cotas G3 - Processando lote %d/%d (%d membros)',
+                        $batch + 1,
+                        $total_batches,
+                        count($members)
+                    ));
+                }
+
+                // Processar cada membro do lote
+                foreach ($members as $member) {
+                    try {
+                        $result = $this->process_member($member);
+
+                        if ($result['action'] == 'created') {
+                            $stats['new_leads']++;
+                        } elseif ($result['action'] == 'updated') {
+                            $stats['updated_leads']++;
+                        } elseif ($result['action'] == 'skipped') {
+                            $stats['skipped']++;
+                        }
+                    } catch (Exception $e) {
+                        $stats['errors']++;
+                        $stats['error_log'][] = [
+                            'member_id'   => $member['MemberId'] ?? 'N/A',
+                            'member_name' => $member['MemberName'] ?? 'N/A',
+                            'error'       => $e->getMessage(),
+                        ];
+
+                        if (get_option('mc_cotas_g3_enable_detailed_log') == '1') {
+                            log_activity('MC Cotas G3 - Erro ao processar membro ' . ($member['MemberName'] ?? 'N/A') . ': ' . $e->getMessage());
+                        }
                     }
                 }
+
+                $stats['batches']++;
+
+                // Limpar memória
+                unset($members);
+                gc_collect_cycles();
             }
 
             $stats['success'] = true;

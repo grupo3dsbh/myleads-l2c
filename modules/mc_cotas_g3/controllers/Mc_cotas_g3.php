@@ -179,6 +179,7 @@ class Mc_cotas_g3 extends AdminController
             'mc_cotas_g3_sync_interval',
             'mc_cotas_g3_sync_only_titular',
             'mc_cotas_g3_sync_only_active',
+            'mc_cotas_g3_sync_batch_size',
             'mc_cotas_g3_default_status',
             'mc_cotas_g3_default_source',
             'mc_cotas_g3_default_assigned',

@@ -62,6 +62,8 @@ $lang['mc_cotas_g3_sync_only_titular'] = 'Sincronizar Apenas Titulares';
 $lang['mc_cotas_g3_sync_only_titular_help'] = 'Se ativado, apenas membros titulares serão sincronizados.';
 $lang['mc_cotas_g3_sync_only_active'] = 'Sincronizar Apenas Membros Ativos';
 $lang['mc_cotas_g3_sync_only_active_help'] = 'Se ativado, apenas membros com status "Ativo" serão sincronizados.';
+$lang['mc_cotas_g3_sync_batch_size'] = 'Tamanho do Lote (Batch)';
+$lang['mc_cotas_g3_sync_batch_size_help'] = 'Quantidade de membros processados por vez. Valores menores usam menos memória mas levam mais tempo. Recomendado: 100-500';
 
 // Configurações - Mapeamento
 $lang['mc_cotas_g3_mapping_settings'] = 'Configurações de Mapeamento';

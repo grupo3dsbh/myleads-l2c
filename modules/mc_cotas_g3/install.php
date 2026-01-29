@@ -186,6 +186,7 @@ try {
         'mc_cotas_g3_sync_interval' => '24',
         'mc_cotas_g3_sync_only_titular' => '1',
         'mc_cotas_g3_sync_only_active' => '1',
+        'mc_cotas_g3_sync_batch_size' => '100',
         'mc_cotas_g3_default_status' => '3',
         'mc_cotas_g3_default_source' => '8',
         'mc_cotas_g3_default_assigned' => '0',

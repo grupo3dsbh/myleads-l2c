@@ -110,6 +110,13 @@
                             </div>
                         </div>
 
+                        <div class="row">
+                            <div class="col-md-6">
+                                <?php echo render_input('mc_cotas_g3_sync_batch_size', 'mc_cotas_g3_sync_batch_size', get_option('mc_cotas_g3_sync_batch_size'), 'number', ['min' => 10, 'max' => 1000, 'step' => 10]); ?>
+                                <small class="text-muted"><?php echo _l('mc_cotas_g3_sync_batch_size_help'); ?></small>
+                            </div>
+                        </div>
+
                         <hr class="mtop30">
 
                         <!-- Configurações de Mapeamento -->
