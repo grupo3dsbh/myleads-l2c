@@ -46,7 +46,7 @@ class Mc_cotas_g3_model extends App_Model
 
     /**
      * Sincronizar membros do Multiclubes com leads EXISTENTES do MyLeads CRM
-     * Compara telefones e atualiza leads que correspondem
+     * Nova lógica: compara telefones e atualiza apenas os que batem
      *
      * @param array $options
      * @return array
@@ -56,15 +56,16 @@ class Mc_cotas_g3_model extends App_Model
         $start_time = microtime(true);
 
         $stats = [
-            'success'        => false,
-            'total_members'  => 0,
-            'new_leads'      => 0,
-            'updated_leads'  => 0,
-            'skipped'        => 0,
-            'errors'         => 0,
-            'error_log'      => [],
-            'execution_time' => 0,
-            'batches'        => 0,
+            'success'         => false,
+            'total_members'   => 0,
+            'total_leads'     => 0,
+            'matched'         => 0,
+            'updated_leads'   => 0,
+            'not_matched'     => 0,
+            'errors'          => 0,
+            'error_log'       => [],
+            'execution_time'  => 0,
+            'batches'         => 0,
         ];
 
         try {
@@ -96,13 +97,42 @@ class Mc_cotas_g3_model extends App_Model
 
             $stats['total_members'] = $total_members;
 
+            // Buscar todos os leads com telefone do MyLeads CRM
+            log_activity('MC Cotas G3 - Carregando leads do MyLeads...');
+
+            $leads = $this->db->select('id, name, phonenumber, description, status')
+                              ->where('phonenumber IS NOT NULL')
+                              ->where('phonenumber !=', '')
+                              ->get(db_prefix() . 'leads')
+                              ->result_array();
+
+            $stats['total_leads'] = count($leads);
+
+            log_activity(sprintf('MC Cotas G3 - %d leads encontrados no MyLeads', count($leads)));
+
+            // Criar mapa de telefones -> lead_id
+            $phone_map = [];
+            $digits = (int)get_option('mc_cotas_g3_match_phone_digits') ?: 8;
+
+            foreach ($leads as $lead) {
+                $clean_phone = $this->clean_phone($lead['phonenumber'], $digits);
+                if (!empty($clean_phone)) {
+                    // Pode ter múltiplos leads com mesmo telefone, pegar o primeiro
+                    if (!isset($phone_map[$clean_phone])) {
+                        $phone_map[$clean_phone] = $lead;
+                    }
+                }
+            }
+
+            log_activity(sprintf('MC Cotas G3 - %d telefones únicos mapeados', count($phone_map)));
+
             // Tamanho do lote (batch)
             $batch_size = (int)get_option('mc_cotas_g3_sync_batch_size') ?: 100;
 
             // Calcular número de lotes
             $total_batches = ceil($total_members / $batch_size);
 
-            // Processar em lotes
+            // Processar membros em lotes
             for ($batch = 0; $batch < $total_batches; $batch++) {
                 $offset = $batch * $batch_size;
 
@@ -129,20 +159,20 @@ class Mc_cotas_g3_model extends App_Model
                 // Processar cada membro do lote
                 foreach ($members as $member) {
                     try {
-                        $result = $this->process_member($member);
+                        $result = $this->process_member_match($member, $phone_map, $digits);
 
-                        if ($result['action'] == 'created') {
-                            $stats['new_leads']++;
-                        } elseif ($result['action'] == 'updated') {
+                        if ($result['action'] == 'matched') {
+                            $stats['matched']++;
                             $stats['updated_leads']++;
-                        } elseif ($result['action'] == 'skipped') {
-                            $stats['skipped']++;
+                        } elseif ($result['action'] == 'not_matched') {
+                            $stats['not_matched']++;
                         }
                     } catch (Exception $e) {
                         $stats['errors']++;
                         $stats['error_log'][] = [
                             'member_id'   => $member['MemberId'] ?? 'N/A',
                             'member_name' => $member['MemberName'] ?? 'N/A',
+                            'member_phone' => $member['MemberMobilePhone'] ?? 'N/A',
                             'error'       => $e->getMessage(),
                         ];
 
@@ -178,210 +208,233 @@ class Mc_cotas_g3_model extends App_Model
     }
 
     /**
-     * Processar um membro individual
+     * Limpar telefone e pegar X últimos dígitos
      *
-     * @param array $member
-     * @return array
+     * @param string $phone
+     * @param int $last_digits
+     * @return string
      */
-    private function process_member($member)
+    private function clean_phone($phone, $last_digits = 8)
     {
-        $member_id = $member['MemberId'];
+        // Remover tudo que não é número
+        $clean = preg_replace('/[^0-9]/', '', $phone);
 
-        // Verificar se o membro já existe como lead
-        $existing_lead = $this->db->where('mc_member_id', $member_id)
-            ->get(db_prefix() . 'leads')
-            ->row();
-
-        // Preparar dados do lead
-        $lead_data = $this->prepare_lead_data($member);
-
-        if ($existing_lead) {
-            // Atualizar lead existente
-            $this->db->where('id', $existing_lead->id);
-            $this->db->update(db_prefix() . 'leads', $lead_data);
-
-            // Atualizar registro de sincronização
-            $this->update_sync_record($member_id, $existing_lead->id, $member);
-
-            return ['action' => 'updated', 'lead_id' => $existing_lead->id];
-        } else {
-            // Criar novo lead
-            $lead_data['dateadded'] = date('Y-m-d H:i:s');
-            $lead_data['addedfrom'] = get_staff_user_id() ?: 0;
-            $lead_data['hash'] = app_generate_hash();
-            $lead_data['lastcontact'] = null;
-            $lead_data['status'] = get_option('mc_cotas_g3_default_status');
-            $lead_data['source'] = get_option('mc_cotas_g3_default_source');
-
-            // Atribuir a um staff se configurado
-            $assigned = get_option('mc_cotas_g3_default_assigned');
-            if ($assigned && $assigned > 0) {
-                $lead_data['assigned'] = $assigned;
-                $lead_data['dateassigned'] = date('Y-m-d');
-            }
-
-            $this->db->insert(db_prefix() . 'leads', $lead_data);
-            $lead_id = $this->db->insert_id();
-
-            // Criar registro de sincronização
-            $this->create_sync_record($member_id, $lead_id, $member);
-
-            return ['action' => 'created', 'lead_id' => $lead_id];
+        // Pegar X últimos dígitos
+        if (strlen($clean) >= $last_digits) {
+            return substr($clean, -$last_digits);
         }
+
+        return $clean;
     }
 
     /**
-     * Preparar dados do lead a partir do membro
+     * Processar membro: comparar telefone e atualizar lead se bater
      *
      * @param array $member
+     * @param array $phone_map
+     * @param int $digits
      * @return array
      */
-    private function prepare_lead_data($member)
+    private function process_member_match($member, $phone_map, $digits)
     {
-        // Formatar telefone
-        $phone = $this->format_phone($member['MemberMobilePhone'] ?? '');
+        $member_phone = $member['MemberMobilePhone'] ?? '';
 
-        // Preparar endereço
-        $address = $this->format_address($member);
+        if (empty($member_phone)) {
+            return ['action' => 'not_matched', 'reason' => 'Sem telefone'];
+        }
 
-        // Preparar descrição
-        $description = $this->prepare_description($member);
+        // Limpar telefone do membro
+        $clean_member_phone = $this->clean_phone($member_phone, $digits);
+
+        if (empty($clean_member_phone)) {
+            return ['action' => 'not_matched', 'reason' => 'Telefone inválido'];
+        }
+
+        // Verificar se existe lead com esse telefone
+        if (!isset($phone_map[$clean_member_phone])) {
+            return ['action' => 'not_matched', 'reason' => 'Telefone não encontrado nos leads'];
+        }
+
+        $lead = $phone_map[$clean_member_phone];
+
+        // ATUALIZAR O LEAD
+        $this->update_lead_with_member_data($lead['id'], $member);
 
         return [
-            'name'           => trim($member['MemberName'] ?? ''),
-            'email'          => trim($member['MemberEmail'] ?? ''),
-            'phonenumber'    => $phone,
-            'address'        => $address['street'],
-            'city'           => $member['AdressCity'] ?? '',
-            'state'          => $member['AdressState'] ?? '',
-            'zip'            => '',
-            'country'        => 0, // Brasil
-            'description'    => $description,
+            'action'  => 'matched',
+            'lead_id' => $lead['id'],
+            'phone'   => $clean_member_phone
+        ];
+    }
+
+    /**
+     * Atualizar lead com dados do membro do Multiclubes
+     *
+     * @param int $lead_id
+     * @param array $member
+     * @return void
+     */
+    private function update_lead_with_member_data($lead_id, $member)
+    {
+        // Buscar lead atual
+        $lead = $this->db->where('id', $lead_id)->get(db_prefix() . 'leads')->row();
+
+        if (!$lead) {
+            throw new Exception('Lead não encontrado: ' . $lead_id);
+        }
+
+        // Preparar nova descrição (adicionar ao que já existe)
+        $new_description = $this->prepare_multiclubes_description($member);
+
+        // Combinar descrições
+        $combined_description = trim($lead->description);
+        if (!empty($combined_description)) {
+            $combined_description .= "\n\n---\n\n";
+        }
+        $combined_description .= $new_description;
+
+        // Preparar dados para atualizar
+        $update_data = [
+            'description'    => $combined_description,
             'mc_member_id'   => $member['MemberId'],
             'mc_title_code'  => $member['TitleCode'] ?? '',
             'mc_is_titular'  => ($member['Titular'] == 'Titular') ? 1 : 0,
+            'mc_vendedor'    => $member['VendedorNome'] ?? '',
+            'mc_data_venda'  => !empty($member['DataVenda']) ? date('Y-m-d H:i:s', strtotime($member['DataVenda'])) : null,
         ];
+
+        // Atualizar status se configurado
+        if (get_option('mc_cotas_g3_update_status_on_match') == '1') {
+            $closed_status = $this->find_closed_status();
+            if ($closed_status) {
+                $update_data['status'] = $closed_status->id;
+                $update_data['last_status_change'] = date('Y-m-d H:i:s');
+            }
+        }
+
+        // Executar update
+        $this->db->where('id', $lead_id);
+        $this->db->update(db_prefix() . 'leads', $update_data);
+
+        // Salvar/atualizar na tabela de sync
+        $this->save_or_update_sync_record($member['MemberId'], $lead_id, $member);
+
+        // Log
+        if (get_option('mc_cotas_g3_enable_detailed_log') == '1') {
+            log_activity(sprintf(
+                'MC Cotas G3 - Lead #%d (%s) atualizado com dados do membro #%d (%s)',
+                $lead_id,
+                $lead->name,
+                $member['MemberId'],
+                $member['MemberName']
+            ));
+        }
     }
 
     /**
-     * Formatar telefone
-     *
-     * @param string $phone
-     * @return string
-     */
-    private function format_phone($phone)
-    {
-        if (empty($phone)) {
-            return '';
-        }
-
-        // Remover caracteres especiais
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-
-        // Adicionar código do país se não tiver
-        if (strlen($phone) == 11 && substr($phone, 0, 2) != '55') {
-            $phone = '55' . $phone;
-        }
-
-        return $phone;
-    }
-
-    /**
-     * Formatar endereço
-     *
-     * @param array $member
-     * @return array
-     */
-    private function format_address($member)
-    {
-        $parts = [];
-
-        if (!empty($member['AdressStreet'])) {
-            $parts[] = $member['AdressStreet'];
-        }
-
-        if (!empty($member['AdressNumber'])) {
-            $parts[] = 'n° ' . $member['AdressNumber'];
-        }
-
-        if (!empty($member['AdressComplement'])) {
-            $parts[] = $member['AdressComplement'];
-        }
-
-        if (!empty($member['AdressBurgh'])) {
-            $parts[] = $member['AdressBurgh'];
-        }
-
-        $street = implode(', ', $parts);
-
-        return [
-            'street' => $street,
-            'city'   => $member['AdressCity'] ?? '',
-            'state'  => $member['AdressState'] ?? '',
-        ];
-    }
-
-    /**
-     * Preparar descrição do lead
+     * Preparar descrição do Multiclubes
      *
      * @param array $member
      * @return string
      */
-    private function prepare_description($member)
+    private function prepare_multiclubes_description($member)
     {
-        $description = "**IMPORTADO DO MULTICLUBES**\n\n";
+        $desc = "**INFORMAÇÕES DO MULTICLUBES**\n\n";
+        $desc .= "**Status:** Cliente Ativo ✅\n";
 
         if (!empty($member['TitleTypeName'])) {
-            $description .= "**Título:** " . $member['TitleTypeName'] . " (" . ($member['TitleCode'] ?? '') . ")\n";
+            $desc .= "**Plano/Título:** " . $member['TitleTypeName'];
+            if (!empty($member['TitleCode'])) {
+                $desc .= " (" . $member['TitleCode'] . ")";
+            }
+            $desc .= "\n";
         }
 
         if (!empty($member['Titular'])) {
-            $description .= "**Tipo:** " . $member['Titular'] . "\n";
+            $desc .= "**Tipo:** " . $member['Titular'] . "\n";
         }
 
         if (!empty($member['MemberStatus'])) {
-            $description .= "**Status:** " . $member['MemberStatus'] . "\n";
+            $desc .= "**Status no Multiclubes:** " . $member['MemberStatus'] . "\n";
+        }
+
+        // VENDEDOR/CONSULTOR COM CONTATOS (IMPORTANTE!)
+        $vendedor = $member['VendedorNome'] ?? '';
+        if (!empty($vendedor)) {
+            $desc .= "**Vendedor/Consultor:** " . $vendedor . " 👤\n";
+
+            // Telefone do vendedor
+            if (!empty($member['VendedorTelefone'])) {
+                $desc .= "**Telefone do Vendedor:** " . $member['VendedorTelefone'] . "\n";
+            }
+
+            // Email do vendedor
+            if (!empty($member['VendedorEmail'])) {
+                $desc .= "**Email do Vendedor:** " . $member['VendedorEmail'] . "\n";
+            }
+        }
+
+        if (!empty($member['DataVenda'])) {
+            $desc .= "**Data da Venda:** " . date('d/m/Y', strtotime($member['DataVenda'])) . "\n";
         }
 
         if (!empty($member['MemberDocumentNumber'])) {
-            $description .= "**CPF:** " . $member['MemberDocumentNumber'] . "\n";
+            $desc .= "**CPF:** " . $member['MemberDocumentNumber'] . "\n";
         }
 
-        if (!empty($member['MemberBirthDate'])) {
-            $birthDate = date('d/m/Y', strtotime($member['MemberBirthDate']));
-            $description .= "**Data de Nascimento:** " . $birthDate;
-            if (!empty($member['MemberAge'])) {
-                $description .= " (" . $member['MemberAge'] . " anos)";
-            }
-            $description .= "\n";
-        }
+        $desc .= "\n*Sincronizado em: " . date('d/m/Y H:i') . "*";
 
-        if (!empty($member['MemberSex'])) {
-            $description .= "**Sexo:** " . $member['MemberSex'] . "\n";
-        }
-
-        if (!empty($member['ParentageName'])) {
-            $description .= "**Parentesco:** " . $member['ParentageName'] . "\n";
-        }
-
-        if (!empty($member['LastUpdateDate'])) {
-            $updateDate = date('d/m/Y H:i', strtotime($member['LastUpdateDate']));
-            $description .= "\n**Última atualização no Multiclubes:** " . $updateDate;
-        }
-
-        return $description;
+        return $desc;
     }
 
     /**
-     * Criar registro de sincronização
+     * Buscar status "Customer" ou "Negócio Fechado"
+     *
+     * @return object|null
+     */
+    private function find_closed_status()
+    {
+        $search_name = get_option('mc_cotas_g3_closed_status_name') ?: 'Customer';
+
+        // Buscar exato primeiro
+        $status = $this->db->where('name', $search_name)
+                           ->get(db_prefix() . 'leads_status')
+                           ->row();
+
+        if ($status) {
+            return $status;
+        }
+
+        // Buscar similar
+        $similar_names = ['Customer', 'Negócio Fechado', 'Fechado', 'Ganho', 'Cliente'];
+
+        foreach ($similar_names as $name) {
+            $status = $this->db->like('name', $name, 'both')
+                               ->get(db_prefix() . 'leads_status')
+                               ->row();
+
+            if ($status) {
+                return $status;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Salvar ou atualizar registro de sincronização
      *
      * @param int $member_id
      * @param int $lead_id
      * @param array $member
      * @return void
      */
-    private function create_sync_record($member_id, $lead_id, $member)
+    private function save_or_update_sync_record($member_id, $lead_id, $member)
     {
+        $existing = $this->db->where('member_id', $member_id)
+                             ->get(db_prefix() . 'mc_cotas_g3_sync')
+                             ->row();
+
         $data = [
             'member_id'       => $member_id,
             'lead_id'         => $lead_id,
@@ -390,32 +443,15 @@ class Mc_cotas_g3_model extends App_Model
             'member_status'   => $member['MemberStatus'] ?? null,
             'is_titular'      => ($member['Titular'] == 'Titular') ? 1 : 0,
             'last_sync_date'  => date('Y-m-d H:i:s'),
-            'dateadded'       => date('Y-m-d H:i:s'),
         ];
 
-        $this->db->insert(db_prefix() . 'mc_cotas_g3_sync', $data);
-    }
-
-    /**
-     * Atualizar registro de sincronização
-     *
-     * @param int $member_id
-     * @param int $lead_id
-     * @param array $member
-     * @return void
-     */
-    private function update_sync_record($member_id, $lead_id, $member)
-    {
-        $data = [
-            'title_code'      => $member['TitleCode'] ?? null,
-            'title_type_name' => $member['TitleTypeName'] ?? null,
-            'member_status'   => $member['MemberStatus'] ?? null,
-            'is_titular'      => ($member['Titular'] == 'Titular') ? 1 : 0,
-            'last_sync_date'  => date('Y-m-d H:i:s'),
-        ];
-
-        $this->db->where('member_id', $member_id);
-        $this->db->update(db_prefix() . 'mc_cotas_g3_sync', $data);
+        if ($existing) {
+            $this->db->where('id', $existing->id);
+            $this->db->update(db_prefix() . 'mc_cotas_g3_sync', $data);
+        } else {
+            $data['dateadded'] = date('Y-m-d H:i:s');
+            $this->db->insert(db_prefix() . 'mc_cotas_g3_sync', $data);
+        }
     }
 
     /**
@@ -429,7 +465,7 @@ class Mc_cotas_g3_model extends App_Model
         $data = [
             'sync_date'      => date('Y-m-d H:i:s'),
             'total_members'  => $stats['total_members'],
-            'new_leads'      => $stats['new_leads'],
+            'new_leads'      => $stats['matched'] ?? 0, // Usando campo 'matched' no lugar de 'new_leads'
             'updated_leads'  => $stats['updated_leads'],
             'errors'         => $stats['errors'],
             'error_log'      => !empty($stats['error_log']) ? json_encode($stats['error_log']) : null,

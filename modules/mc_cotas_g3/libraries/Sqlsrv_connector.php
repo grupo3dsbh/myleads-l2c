@@ -169,7 +169,7 @@ class Sqlsrv_connector
     }
 
     /**
-     * Buscar membros do Multiclubes
+     * Buscar membros do Multiclubes com dados do promotor/vendedor
      *
      * @param array $filters
      * @return array|false
@@ -177,46 +177,53 @@ class Sqlsrv_connector
     public function get_members($filters = [])
     {
         $query = "SELECT
-            [MemberId],
-            [MemberName],
-            [MemberMobilePhone],
-            [MemberEmail],
-            [MemberDocumentType],
-            [MemberDocumentNumber],
-            [MemberBirthDate],
-            [MemberAge],
-            [MemberSex],
-            [Titular],
-            [MemberStatus],
-            [MemberOccupation],
-            [TitleCode],
-            [TitleTypeName],
-            [AdressCity],
-            [AdressBurgh],
-            [AdressStreet],
-            [AdressNumber],
-            [AdressComplement],
-            [AdressState],
-            [ParentageName],
-            [DependenciesLastUpdateDate],
-            [LastUpdateDate]
-        FROM [MultiClubes].[Analytics].[MembersView]";
+            M.[MemberId],
+            M.[MemberName],
+            M.[MemberMobilePhone],
+            M.[MemberEmail],
+            M.[MemberDocumentType],
+            M.[MemberDocumentNumber],
+            M.[MemberBirthDate],
+            M.[MemberAge],
+            M.[MemberSex],
+            M.[Titular],
+            M.[MemberStatus],
+            M.[MemberOccupation],
+            M.[TitleCode],
+            M.[TitleTypeName],
+            M.[AdressCity],
+            M.[AdressBurgh],
+            M.[AdressStreet],
+            M.[AdressNumber],
+            M.[AdressComplement],
+            M.[AdressState],
+            M.[ParentageName],
+            M.[DependenciesLastUpdateDate],
+            M.[LastUpdateDate],
+            T.[Promoter] AS VendedorNome,
+            T.[CadasterDate] AS DataVenda,
+            P.[MemberMobilePhone] AS VendedorTelefone,
+            P.[MemberEmail] AS VendedorEmail
+        FROM [MultiClubes].[Analytics].[MembersView] M
+        LEFT JOIN [MultiClubes].[Analytics].[TitlesView] T ON M.[TitleCode] = T.[TitleCode]
+        LEFT JOIN [MultiClubes].[Analytics].[MembersView] P ON T.[Promoter] = P.[MemberName]
+            AND P.[TitleTypeName] = 'Promotor'";
 
         $conditions = [];
 
         // Filtro: apenas titulares
         if (!empty($filters['only_titular'])) {
-            $conditions[] = "[Titular] = 'Titular'";
+            $conditions[] = "M.[Titular] = 'Titular'";
         }
 
         // Filtro: apenas ativos
         if (!empty($filters['only_active'])) {
-            $conditions[] = "[MemberStatus] = 'Ativo'";
+            $conditions[] = "M.[MemberStatus] = 'Ativo'";
         }
 
         // Filtro: data específica
         if (!empty($filters['from_date'])) {
-            $conditions[] = "[LastUpdateDate] >= '" . $filters['from_date'] . "'";
+            $conditions[] = "M.[LastUpdateDate] >= '" . $filters['from_date'] . "'";
         }
 
         // Adicionar condições à query
@@ -225,7 +232,7 @@ class Sqlsrv_connector
         }
 
         // Ordenar por MemberId para paginação consistente
-        $query .= " ORDER BY [MemberId] ASC";
+        $query .= " ORDER BY M.[MemberId] ASC";
 
         // Paginação (OFFSET/FETCH - SQL Server 2012+)
         if (isset($filters['limit']) && $filters['limit'] > 0) {
@@ -247,23 +254,26 @@ class Sqlsrv_connector
     public function count_members($filters = [])
     {
         $query = "SELECT COUNT(*) as total
-        FROM [MultiClubes].[Analytics].[MembersView]";
+        FROM [MultiClubes].[Analytics].[MembersView] M
+        LEFT JOIN [MultiClubes].[Analytics].[TitlesView] T ON M.[TitleCode] = T.[TitleCode]
+        LEFT JOIN [MultiClubes].[Analytics].[MembersView] P ON T.[Promoter] = P.[MemberName]
+            AND P.[TitleTypeName] = 'Promotor'";
 
         $conditions = [];
 
         // Filtro: apenas titulares
         if (!empty($filters['only_titular'])) {
-            $conditions[] = "[Titular] = 'Titular'";
+            $conditions[] = "M.[Titular] = 'Titular'";
         }
 
         // Filtro: apenas ativos
         if (!empty($filters['only_active'])) {
-            $conditions[] = "[MemberStatus] = 'Ativo'";
+            $conditions[] = "M.[MemberStatus] = 'Ativo'";
         }
 
         // Filtro: data específica
         if (!empty($filters['from_date'])) {
-            $conditions[] = "[LastUpdateDate] >= '" . $filters['from_date'] . "'";
+            $conditions[] = "M.[LastUpdateDate] >= '" . $filters['from_date'] . "'";
         }
 
         // Adicionar condições à query

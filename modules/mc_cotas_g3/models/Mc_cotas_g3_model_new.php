@@ -245,7 +245,7 @@ private function update_lead_with_member_data($lead_id, $member)
         'mc_member_id'   => $member['MemberId'],
         'mc_title_code'  => $member['TitleCode'] ?? '',
         'mc_is_titular'  => ($member['Titular'] == 'Titular') ? 1 : 0,
-        'mc_vendedor'    => $member['VendedorNome'] ?? ($member['ConsultorNome'] ?? ''),
+        'mc_vendedor'    => $member['VendedorNome'] ?? '',
         'mc_data_venda'  => !empty($member['DataVenda']) ? date('Y-m-d H:i:s', strtotime($member['DataVenda'])) : null,
     ];
 
@@ -301,10 +301,20 @@ private function prepare_multiclubes_description($member)
         $desc .= "**Status no Multiclubes:** " . $member['MemberStatus'] . "\n";
     }
 
-    // VENDEDOR/CONSULTOR (IMPORTANTE!)
-    $vendedor = $member['VendedorNome'] ?? ($member['ConsultorNome'] ?? '');
+    // VENDEDOR/CONSULTOR COM CONTATOS (IMPORTANTE!)
+    $vendedor = $member['VendedorNome'] ?? '';
     if (!empty($vendedor)) {
         $desc .= "**Vendedor/Consultor:** " . $vendedor . " 👤\n";
+
+        // Telefone do vendedor
+        if (!empty($member['VendedorTelefone'])) {
+            $desc .= "**Telefone do Vendedor:** " . $member['VendedorTelefone'] . "\n";
+        }
+
+        // Email do vendedor
+        if (!empty($member['VendedorEmail'])) {
+            $desc .= "**Email do Vendedor:** " . $member['VendedorEmail'] . "\n";
+        }
     }
 
     if (!empty($member['DataVenda'])) {

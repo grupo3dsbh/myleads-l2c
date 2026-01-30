@@ -88,8 +88,9 @@ class Mc_cotas_g3 extends AdminController
                 $message = sprintf(
                     _l('mc_cotas_g3_sync_success'),
                     $result['total_members'],
-                    $result['new_leads'],
+                    $result['matched'],
                     $result['updated_leads'],
+                    $result['not_matched'],
                     $result['errors']
                 );
 
