@@ -1,8 +1,8 @@
-# MC Cotas G3 - Módulo Perfex CRM
+# MC Cotas G3 - Módulo MyLeads CRM
 
 ## Descrição
 
-Módulo para integração do **Multiclubes** com o **MyLeads** (Perfex CRM). Sincroniza automaticamente os membros/cotas vendidas do Multiclubes como leads no Perfex CRM.
+Módulo para integração do **Multiclubes** com o **MyLeads** (MyLeads CRM). Sincroniza automaticamente os membros/cotas vendidas do Multiclubes como leads no MyLeads CRM.
 
 ## Características
 
@@ -19,7 +19,7 @@ Módulo para integração do **Multiclubes** com o **MyLeads** (Perfex CRM). Sin
 
 ### Sistema
 
-- Perfex CRM versão 2.3.0 ou superior
+- MyLeads CRM versão 2.3.0 ou superior
 - PHP 7.2 ou superior
 - MySQL/MariaDB
 
@@ -50,9 +50,9 @@ sudo systemctl restart php7.4-fpm
 
 ## Instalação
 
-1. Faça upload da pasta `mc_cotas_g3` para o diretório `modules/` do Perfex CRM
+1. Faça upload da pasta `mc_cotas_g3` para o diretório `modules/` do MyLeads CRM
 
-2. Acesse o Perfex CRM como administrador
+2. Acesse o MyLeads CRM como administrador
 
 3. Navegue até **Setup → Módulos**
 
@@ -100,7 +100,7 @@ Clique em **Testar Conexão** para validar as credenciais.
 
 ### Sincronização Automática
 
-A sincronização automática é executada através do CRON do Perfex CRM.
+A sincronização automática é executada através do CRON do MyLeads CRM.
 
 Para ativar:
 
@@ -128,13 +128,13 @@ O CRON do Perfex deve estar configurado no servidor:
 
 #### `{prefix}_mc_cotas_g3_sync`
 
-Armazena o relacionamento entre membros do Multiclubes e leads do Perfex CRM.
+Armazena o relacionamento entre membros do Multiclubes e leads do MyLeads CRM.
 
 | Campo             | Tipo         | Descrição                          |
 |-------------------|--------------|------------------------------------|
 | id                | INT          | ID único                           |
 | member_id         | INT          | ID do membro no Multiclubes        |
-| lead_id           | INT          | ID do lead no Perfex CRM           |
+| lead_id           | INT          | ID do lead no MyLeads CRM           |
 | title_code        | VARCHAR(50)  | Código do título                   |
 | title_type_name   | VARCHAR(191) | Nome do tipo de título             |
 | member_status     | VARCHAR(50)  | Status do membro                   |
@@ -169,9 +169,9 @@ Os seguintes campos são adicionados à tabela `{prefix}_leads`:
 
 ## Mapeamento de Campos
 
-### Multiclubes → Perfex CRM
+### Multiclubes → MyLeads CRM
 
-| Campo Multiclubes       | Campo Perfex CRM | Observações                        |
+| Campo Multiclubes       | Campo MyLeads CRM | Observações                        |
 |-------------------------|------------------|------------------------------------|
 | MemberId                | mc_member_id     | Campo customizado                  |
 | MemberName              | name             | Nome do lead                       |

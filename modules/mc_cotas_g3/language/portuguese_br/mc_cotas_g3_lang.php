@@ -16,7 +16,7 @@ $lang['mc_cotas_g3_settings'] = 'Configurações';
 // Sincronização
 $lang['mc_cotas_g3_sync_now'] = 'Sincronizar Agora';
 $lang['mc_cotas_g3_sync_confirm'] = 'Tem certeza que deseja executar a sincronização agora? Este processo pode levar alguns minutos.';
-$lang['mc_cotas_g3_sync_success'] = 'Sincronização concluída com sucesso! Total de membros: %s | Novos leads: %s | Leads atualizados: %s | Erros: %s';
+$lang['mc_cotas_g3_sync_success'] = 'Sincronização concluída com sucesso! Total de membros: %s | Leads encontrados: %s | Leads atualizados: %s | Não encontrados: %s | Erros: %s';
 $lang['mc_cotas_g3_sync_error'] = 'Erro durante a sincronização';
 $lang['mc_cotas_g3_sync_history'] = 'Histórico de Sincronizações';
 $lang['mc_cotas_g3_no_sync_history'] = 'Nenhuma sincronização realizada ainda.';
@@ -32,7 +32,7 @@ $lang['mc_cotas_g3_never_synced'] = 'Nunca';
 // Tabela de Histórico
 $lang['mc_cotas_g3_sync_date'] = 'Data/Hora';
 $lang['mc_cotas_g3_total_members'] = 'Total de Membros';
-$lang['mc_cotas_g3_new_leads'] = 'Novos Leads';
+$lang['mc_cotas_g3_new_leads'] = 'Leads Encontrados';
 $lang['mc_cotas_g3_updated_leads'] = 'Leads Atualizados';
 $lang['mc_cotas_g3_errors'] = 'Erros';
 $lang['mc_cotas_g3_execution_time'] = 'Tempo de Execução';
@@ -62,10 +62,12 @@ $lang['mc_cotas_g3_sync_only_titular'] = 'Sincronizar Apenas Titulares';
 $lang['mc_cotas_g3_sync_only_titular_help'] = 'Se ativado, apenas membros titulares serão sincronizados.';
 $lang['mc_cotas_g3_sync_only_active'] = 'Sincronizar Apenas Membros Ativos';
 $lang['mc_cotas_g3_sync_only_active_help'] = 'Se ativado, apenas membros com status "Ativo" serão sincronizados.';
+$lang['mc_cotas_g3_sync_batch_size'] = 'Tamanho do Lote (Batch)';
+$lang['mc_cotas_g3_sync_batch_size_help'] = 'Quantidade de membros processados por vez. Valores menores usam menos memória mas levam mais tempo. Recomendado: 100-500';
 
 // Configurações - Mapeamento
 $lang['mc_cotas_g3_mapping_settings'] = 'Configurações de Mapeamento';
-$lang['mc_cotas_g3_mapping_settings_desc'] = 'Configure como os membros do Multiclubes serão criados como leads no Perfex CRM.';
+$lang['mc_cotas_g3_mapping_settings_desc'] = 'Configure como os membros do Multiclubes serão comparados com os leads no MyLeads CRM.';
 $lang['mc_cotas_g3_default_status'] = 'Status Padrão dos Leads';
 $lang['mc_cotas_g3_default_status_help'] = 'Status que será atribuído aos novos leads criados.';
 $lang['mc_cotas_g3_default_source'] = 'Fonte Padrão dos Leads';
