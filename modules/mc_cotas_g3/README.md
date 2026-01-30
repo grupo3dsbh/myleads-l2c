@@ -195,9 +195,42 @@ O módulo cria as seguintes permissões:
 
 ## Solução de Problemas
 
-### Erro: "Nenhum driver SQL Server disponível"
+### ⚠️ Erro: "Nenhum driver SQL Server disponível (sqlsrv ou pdo_sqlsrv)"
 
-Instale uma das extensões PHP necessárias (sqlsrv ou pdo_sqlsrv).
+**Este é o erro mais comum na primeira instalação.**
+
+O servidor PHP não possui as extensões necessárias para conectar ao SQL Server. Siga os passos abaixo:
+
+#### Solução Rápida (Instalação Automática):
+
+```bash
+# No servidor via SSH
+cd /caminho/do/myleads/modules/mc_cotas_g3
+sudo bash install_drivers.sh
+```
+
+O script irá:
+1. ✅ Instalar Microsoft ODBC Driver 18 para SQL Server
+2. ✅ Instalar extensões PHP (sqlsrv e pdo_sqlsrv)
+3. ✅ Configurar e habilitar as extensões
+4. ✅ Reiniciar serviços web (Apache/Nginx/PHP-FPM)
+
+#### Solução Manual:
+
+Consulte o guia completo: **[INSTALL_SQLSERVER_DRIVERS.md](INSTALL_SQLSERVER_DRIVERS.md)**
+
+#### Verificar se foi instalado corretamente:
+
+```bash
+php -m | grep sqlsrv
+# Deve retornar:
+# pdo_sqlsrv
+# sqlsrv
+```
+
+Após instalação, teste a conexão em: **MC Cotas G3 → Configurações → Testar Conexão**
+
+---
 
 ### Erro ao conectar ao SQL Server
 
