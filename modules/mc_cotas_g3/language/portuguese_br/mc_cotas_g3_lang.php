@@ -18,6 +18,7 @@ $lang['mc_cotas_g3_sync_now'] = 'Sincronizar Agora';
 $lang['mc_cotas_g3_sync_confirm'] = 'Tem certeza que deseja executar a sincronização agora? Este processo pode levar alguns minutos.';
 $lang['mc_cotas_g3_sync_success'] = 'Sincronização concluída com sucesso! Total de membros: %s | Leads encontrados: %s | Leads atualizados: %s | Não encontrados: %s | Erros: %s';
 $lang['mc_cotas_g3_sync_error'] = 'Erro durante a sincronização';
+$lang['mc_cotas_g3_sync_interval_error'] = 'Você precisa aguardar %s hora(s) e %s minuto(s) para sincronizar novamente. Intervalo mínimo: 6 horas.';
 $lang['mc_cotas_g3_sync_history'] = 'Histórico de Sincronizações';
 $lang['mc_cotas_g3_no_sync_history'] = 'Nenhuma sincronização realizada ainda.';
 $lang['mc_cotas_g3_sync_log_details'] = 'Detalhes da Sincronização';

@@ -65,7 +65,22 @@ class Mc_cotas_g3 extends AdminController
 
         $data['title'] = _l('mc_cotas_g3_sync');
         $data['stats'] = $this->mc_cotas_g3_model->get_stats();
+        $data['dashboard_stats'] = $this->mc_cotas_g3_model->get_dashboard_stats();
         $data['history'] = $this->mc_cotas_g3_model->get_sync_history(10);
+
+        // Verificar se pode sincronizar (intervalo de 6h)
+        $last_sync_time = get_option('mc_cotas_g3_last_sync_timestamp');
+        $can_sync = true;
+        $time_remaining = 0;
+
+        if ($last_sync_time) {
+            $interval_seconds = 6 * 3600; // 6 horas
+            $time_remaining = $interval_seconds - (time() - $last_sync_time);
+            $can_sync = $time_remaining <= 0;
+        }
+
+        $data['can_sync'] = $can_sync;
+        $data['time_remaining'] = $time_remaining;
 
         $this->load->view('mc_cotas_g3/sync', $data);
     }
@@ -79,12 +94,36 @@ class Mc_cotas_g3 extends AdminController
             ajax_access_denied();
         }
 
+        // Verificar intervalo mínimo de 6h entre sincronizações
+        $last_sync_time = get_option('mc_cotas_g3_last_sync_timestamp');
+        $interval_hours = 6;
+        $interval_seconds = $interval_hours * 3600;
+
+        if ($last_sync_time && (time() - $last_sync_time) < $interval_seconds) {
+            $time_remaining = $interval_seconds - (time() - $last_sync_time);
+            $hours_remaining = floor($time_remaining / 3600);
+            $minutes_remaining = floor(($time_remaining % 3600) / 60);
+
+            $message = sprintf(
+                _l('mc_cotas_g3_sync_interval_error'),
+                $hours_remaining,
+                $minutes_remaining
+            );
+
+            set_alert('warning', $message);
+            redirect(admin_url('mc_cotas_g3/sync'));
+            return;
+        }
+
         set_time_limit(300); // 5 minutos
 
         try {
             $result = $this->mc_cotas_g3_model->sync_members();
 
             if ($result['success']) {
+                // Atualizar timestamp da última sincronização
+                update_option('mc_cotas_g3_last_sync_timestamp', time());
+
                 $message = sprintf(
                     _l('mc_cotas_g3_sync_success'),
                     $result['total_members'],

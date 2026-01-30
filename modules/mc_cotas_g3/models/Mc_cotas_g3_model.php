@@ -56,16 +56,18 @@ class Mc_cotas_g3_model extends App_Model
         $start_time = microtime(true);
 
         $stats = [
-            'success'         => false,
-            'total_members'   => 0,
-            'total_leads'     => 0,
-            'matched'         => 0,
-            'updated_leads'   => 0,
-            'not_matched'     => 0,
-            'errors'          => 0,
-            'error_log'       => [],
-            'execution_time'  => 0,
-            'batches'         => 0,
+            'success'              => false,
+            'total_members'        => 0,
+            'total_leads'          => 0,
+            'total_leads_eligible' => 0,
+            'matched'              => 0,
+            'updated_leads'        => 0,
+            'not_matched'          => 0,
+            'already_synced'       => 0,
+            'errors'               => 0,
+            'error_log'            => [],
+            'execution_time'       => 0,
+            'batches'              => 0,
         ];
 
         try {
@@ -100,15 +102,30 @@ class Mc_cotas_g3_model extends App_Model
             // Buscar todos os leads com telefone do MyLeads CRM
             log_activity('MC Cotas G3 - Carregando leads do MyLeads...');
 
+            // Total de leads com telefone (para estatística)
+            $total_with_phone = $this->db->where('phonenumber IS NOT NULL')
+                                         ->where('phonenumber !=', '')
+                                         ->count_all_results(db_prefix() . 'leads');
+
+            $stats['total_leads'] = $total_with_phone;
+
+            // Buscar APENAS leads que NÃO foram sincronizados ainda (mc_member_id IS NULL)
             $leads = $this->db->select('id, name, phonenumber, description, status')
                               ->where('phonenumber IS NOT NULL')
                               ->where('phonenumber !=', '')
+                              ->group_start()
+                                  ->where('mc_member_id IS NULL')
+                                  ->or_where('mc_member_id', '')
+                                  ->or_where('mc_member_id', '0')
+                              ->group_end()
                               ->get(db_prefix() . 'leads')
                               ->result_array();
 
-            $stats['total_leads'] = count($leads);
+            $stats['total_leads_eligible'] = count($leads);
+            $stats['already_synced'] = $total_with_phone - count($leads);
 
-            log_activity(sprintf('MC Cotas G3 - %d leads encontrados no MyLeads', count($leads)));
+            log_activity(sprintf('MC Cotas G3 - %d leads com telefone, %d elegíveis para sync, %d já sincronizados',
+                $total_with_phone, count($leads), $stats['already_synced']));
 
             // Criar mapa de telefones -> lead_id
             $phone_map = [];
@@ -520,5 +537,79 @@ class Mc_cotas_g3_model extends App_Model
         $stats['last_sync'] = $last_sync ? $last_sync->sync_date : null;
 
         return $stats;
+    }
+
+    /**
+     * Obter estatísticas completas do dashboard
+     *
+     * @return array
+     */
+    public function get_dashboard_stats()
+    {
+        $stats = [];
+
+        // Última sincronização
+        $last_sync = $this->db->order_by('sync_date', 'DESC')
+            ->limit(1)
+            ->get(db_prefix() . 'mc_cotas_g3_sync_log')
+            ->row();
+
+        if ($last_sync) {
+            $stats['last_sync'] = [
+                'date' => $last_sync->sync_date,
+                'total_members' => $last_sync->total_members,
+                'matched' => $last_sync->new_leads, // Campo 'new_leads' guarda 'matched'
+                'updated' => $last_sync->updated_leads,
+                'errors' => $last_sync->errors,
+                'execution_time' => $last_sync->execution_time
+            ];
+        } else {
+            $stats['last_sync'] = null;
+        }
+
+        // Total geral de leads sincronizados
+        $stats['total_synced'] = $this->db->where('mc_member_id IS NOT NULL')
+            ->where('mc_member_id !=', '')
+            ->where('mc_member_id !=', '0')
+            ->count_all_results(db_prefix() . 'leads');
+
+        // Ranking de consultores/vendedores (top 10)
+        $stats['top_consultores'] = $this->get_top_consultores(10);
+
+        return $stats;
+    }
+
+    /**
+     * Obter ranking de consultores com mais vendas
+     *
+     * @param int $limit
+     * @return array
+     */
+    public function get_top_consultores($limit = 10)
+    {
+        // Buscar leads agrupados por mc_vendedor
+        $query = "SELECT
+            l.mc_vendedor,
+            COUNT(*) as total_vendas,
+            s.staffid,
+            s.firstname,
+            s.lastname,
+            s.email,
+            s.phonenumber
+        FROM " . db_prefix() . "leads l
+        LEFT JOIN " . db_prefix() . "staff s ON (
+            LOWER(CONCAT(s.firstname, ' ', s.lastname)) = LOWER(l.mc_vendedor)
+            OR LOWER(CONCAT(s.lastname, ' ', s.firstname)) = LOWER(l.mc_vendedor)
+            OR s.email = l.mc_vendedor
+        )
+        WHERE l.mc_vendedor IS NOT NULL
+        AND l.mc_vendedor != ''
+        GROUP BY l.mc_vendedor, s.staffid, s.firstname, s.lastname, s.email, s.phonenumber
+        ORDER BY total_vendas DESC
+        LIMIT " . (int)$limit;
+
+        $result = $this->db->query($query)->result_array();
+
+        return $result;
     }
 }
