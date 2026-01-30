@@ -119,7 +119,7 @@
 
                         <hr class="mtop30">
 
-                        <!-- Configurações de Mapeamento -->
+                        <!-- Configurações de Matching -->
                         <div class="row">
                             <div class="col-md-12">
                                 <h4 class="bold"><?php echo _l('mc_cotas_g3_mapping_settings'); ?></h4>
@@ -128,48 +128,28 @@
                         </div>
 
                         <div class="row">
-                            <div class="col-md-4">
+                            <div class="col-md-6">
+                                <?php echo render_input('mc_cotas_g3_match_phone_digits', 'mc_cotas_g3_match_phone_digits', get_option('mc_cotas_g3_match_phone_digits') ?: 8, 'number', ['min' => 4, 'max' => 15]); ?>
+                                <small class="text-muted"><?php echo _l('mc_cotas_g3_match_phone_digits_help'); ?></small>
+                            </div>
+                            <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="mc_cotas_g3_default_status"><?php echo _l('mc_cotas_g3_default_status'); ?></label>
-                                    <select name="mc_cotas_g3_default_status" id="mc_cotas_g3_default_status" class="selectpicker" data-width="100%">
-                                        <?php foreach ($lead_statuses as $status) { ?>
-                                            <option value="<?php echo $status['id']; ?>"
-                                                    <?php echo get_option('mc_cotas_g3_default_status') == $status['id'] ? 'selected' : ''; ?>>
-                                                <?php echo $status['name']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                    <small class="text-muted"><?php echo _l('mc_cotas_g3_default_status_help'); ?></small>
+                                    <div class="checkbox checkbox-primary">
+                                        <input type="checkbox" name="mc_cotas_g3_update_status_on_match" id="mc_cotas_g3_update_status_on_match"
+                                               <?php echo get_option('mc_cotas_g3_update_status_on_match') == '1' ? 'checked' : ''; ?>>
+                                        <label for="mc_cotas_g3_update_status_on_match">
+                                            <?php echo _l('mc_cotas_g3_update_status_on_match'); ?>
+                                        </label>
+                                    </div>
+                                    <small class="text-muted"><?php echo _l('mc_cotas_g3_update_status_on_match_help'); ?></small>
                                 </div>
                             </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="mc_cotas_g3_default_source"><?php echo _l('mc_cotas_g3_default_source'); ?></label>
-                                    <select name="mc_cotas_g3_default_source" id="mc_cotas_g3_default_source" class="selectpicker" data-width="100%">
-                                        <?php foreach ($lead_sources as $source) { ?>
-                                            <option value="<?php echo $source['id']; ?>"
-                                                    <?php echo get_option('mc_cotas_g3_default_source') == $source['id'] ? 'selected' : ''; ?>>
-                                                <?php echo $source['name']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                    <small class="text-muted"><?php echo _l('mc_cotas_g3_default_source_help'); ?></small>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="form-group">
-                                    <label for="mc_cotas_g3_default_assigned"><?php echo _l('mc_cotas_g3_default_assigned'); ?></label>
-                                    <select name="mc_cotas_g3_default_assigned" id="mc_cotas_g3_default_assigned" class="selectpicker" data-width="100%">
-                                        <option value="0"><?php echo _l('mc_cotas_g3_not_assigned'); ?></option>
-                                        <?php foreach ($staff as $member) { ?>
-                                            <option value="<?php echo $member['staffid']; ?>"
-                                                    <?php echo get_option('mc_cotas_g3_default_assigned') == $member['staffid'] ? 'selected' : ''; ?>>
-                                                <?php echo $member['firstname'] . ' ' . $member['lastname']; ?>
-                                            </option>
-                                        <?php } ?>
-                                    </select>
-                                    <small class="text-muted"><?php echo _l('mc_cotas_g3_default_assigned_help'); ?></small>
-                                </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <?php echo render_input('mc_cotas_g3_closed_status_name', 'mc_cotas_g3_closed_status_name', get_option('mc_cotas_g3_closed_status_name') ?: 'Customer', 'text'); ?>
+                                <small class="text-muted"><?php echo _l('mc_cotas_g3_closed_status_name_help'); ?></small>
                             </div>
                         </div>
 

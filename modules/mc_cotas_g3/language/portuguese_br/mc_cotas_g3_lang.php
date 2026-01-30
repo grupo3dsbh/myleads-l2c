@@ -66,16 +66,15 @@ $lang['mc_cotas_g3_sync_only_active_help'] = 'Se ativado, apenas membros com sta
 $lang['mc_cotas_g3_sync_batch_size'] = 'Tamanho do Lote (Batch)';
 $lang['mc_cotas_g3_sync_batch_size_help'] = 'Quantidade de membros processados por vez. Valores menores usam menos memória mas levam mais tempo. Recomendado: 100-500';
 
-// Configurações - Mapeamento
-$lang['mc_cotas_g3_mapping_settings'] = 'Configurações de Mapeamento';
-$lang['mc_cotas_g3_mapping_settings_desc'] = 'Configure como os membros do Multiclubes serão comparados com os leads no MyLeads CRM.';
-$lang['mc_cotas_g3_default_status'] = 'Status Padrão dos Leads';
-$lang['mc_cotas_g3_default_status_help'] = 'Status que será atribuído aos novos leads criados.';
-$lang['mc_cotas_g3_default_source'] = 'Fonte Padrão dos Leads';
-$lang['mc_cotas_g3_default_source_help'] = 'Fonte que será atribuída aos novos leads criados.';
-$lang['mc_cotas_g3_default_assigned'] = 'Atribuir Automaticamente Para';
-$lang['mc_cotas_g3_default_assigned_help'] = 'Membro da equipe que receberá automaticamente os novos leads. Deixe em branco para não atribuir.';
-$lang['mc_cotas_g3_not_assigned'] = 'Não atribuir';
+// Configurações - Matching/Mapeamento
+$lang['mc_cotas_g3_mapping_settings'] = 'Configurações de Matching';
+$lang['mc_cotas_g3_mapping_settings_desc'] = 'Configure como os membros do Multiclubes serão comparados (matching) com os leads existentes no MyLeads CRM por telefone.';
+$lang['mc_cotas_g3_match_phone_digits'] = 'Dígitos do Telefone para Matching';
+$lang['mc_cotas_g3_match_phone_digits_help'] = 'Quantidade de dígitos finais do telefone para comparar. Padrão: 8 (últimos 8 dígitos).';
+$lang['mc_cotas_g3_update_status_on_match'] = 'Atualizar Status ao Encontrar Match';
+$lang['mc_cotas_g3_update_status_on_match_help'] = 'Se ativado, quando encontrar um lead com match, atualiza o status para "Cliente" ou similar.';
+$lang['mc_cotas_g3_closed_status_name'] = 'Nome do Status de Cliente';
+$lang['mc_cotas_g3_closed_status_name_help'] = 'Nome do status para quando encontrar match (ex: "Customer", "Cliente", "Negócio Fechado"). Padrão: Customer.';
 
 // Configurações - Log
 $lang['mc_cotas_g3_log_settings'] = 'Configurações de Log';

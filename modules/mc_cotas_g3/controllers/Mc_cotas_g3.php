@@ -178,22 +178,6 @@ class Mc_cotas_g3 extends AdminController
 
         $data['title'] = _l('mc_cotas_g3_settings');
 
-        // Buscar todas as opções de status de leads
-        $data['lead_statuses'] = $this->db->order_by('statusorder', 'ASC')
-            ->get(db_prefix() . 'leads_status')
-            ->result_array();
-
-        // Buscar todas as fontes de leads
-        $data['lead_sources'] = $this->db->order_by('name', 'ASC')
-            ->get(db_prefix() . 'leads_sources')
-            ->result_array();
-
-        // Buscar todos os membros da equipe
-        $data['staff'] = $this->db->where('active', 1)
-            ->order_by('firstname', 'ASC')
-            ->get(db_prefix() . 'staff')
-            ->result_array();
-
         $this->load->view('mc_cotas_g3/settings', $data);
     }
 
@@ -208,21 +192,25 @@ class Mc_cotas_g3 extends AdminController
 
         $post_data = $this->input->post();
 
-        // Configurações de conexão SQL Server
+        // Configurações do módulo
         $options = [
+            // Conexão SQL Server
             'mc_cotas_g3_sqlserver_host',
             'mc_cotas_g3_sqlserver_user',
             'mc_cotas_g3_sqlserver_password',
             'mc_cotas_g3_sqlserver_database',
             'mc_cotas_g3_sqlserver_port',
+            // Sincronização
             'mc_cotas_g3_auto_sync',
             'mc_cotas_g3_sync_interval',
             'mc_cotas_g3_sync_only_titular',
             'mc_cotas_g3_sync_only_active',
             'mc_cotas_g3_sync_batch_size',
-            'mc_cotas_g3_default_status',
-            'mc_cotas_g3_default_source',
-            'mc_cotas_g3_default_assigned',
+            // Matching
+            'mc_cotas_g3_match_phone_digits',
+            'mc_cotas_g3_update_status_on_match',
+            'mc_cotas_g3_closed_status_name',
+            // Log
             'mc_cotas_g3_enable_detailed_log',
         ];
 
@@ -234,6 +222,7 @@ class Mc_cotas_g3 extends AdminController
                 'mc_cotas_g3_auto_sync',
                 'mc_cotas_g3_sync_only_titular',
                 'mc_cotas_g3_sync_only_active',
+                'mc_cotas_g3_update_status_on_match',
                 'mc_cotas_g3_enable_detailed_log'
             ])) {
                 $value = isset($post_data[$option]) && $post_data[$option] == 'on' ? '1' : '0';
